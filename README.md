@@ -57,7 +57,7 @@ Starts the server, which listens on port `8080`.
 
 ## Project layout
 
-```
+```sh
 CMakeLists.txt        Top-level: project(), options, subdirectories
 CMakePresets.json     The build interface (configure/build/test/workflow)
 justfile              Thin task-runner shortcuts around the presets
