@@ -2,7 +2,7 @@
 #include <string.h>
 #include <tcp.h>
 
-server_status_e bind_tcp_port(tcp_server *server, int port) {
+server_status_e bind_tcp_port(tcp_server *server, uint16_t port) {
   memset(server, 0, sizeof(*server));
   server->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (server->socket_fd == -1) {

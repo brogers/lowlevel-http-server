@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <tcp.h>
 
-int main() {
+int main(void) {
   tcp_server server = {0};
   server_status_e status = bind_tcp_port(&server, 8080);
   if (status != SERVER_OK) {

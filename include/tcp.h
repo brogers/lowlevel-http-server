@@ -2,6 +2,7 @@
 #define TCP_H
 
 #include <arpa/inet.h>
+#include <stdint.h>
 #include <unistd.h>
 
 typedef enum {
@@ -17,7 +18,7 @@ typedef struct {
   struct sockaddr_in address;
 } tcp_server;
 
-server_status_e bind_tcp_port(tcp_server *server, int port);
+server_status_e bind_tcp_port(tcp_server *server, uint16_t port);
 int accept_client(int server_fd);
 
 #endif // TCP_H

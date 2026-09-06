@@ -1,6 +1,0 @@
--std=c11
--L/usr/local/lib
--I/usr/local/include
--I./include
--lfmt
-
