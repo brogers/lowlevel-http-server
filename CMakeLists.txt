@@ -6,7 +6,7 @@ project(myhttp
   LANGUAGES C
 )
 
-# ---- Project-wide settings (only when built directly, not as a subproject) ----
+# Project-wide settings (only when built directly, not as a subproject)
 if(PROJECT_IS_TOP_LEVEL)
   set(CMAKE_C_STANDARD 23)
   set(CMAKE_C_STANDARD_REQUIRED ON)

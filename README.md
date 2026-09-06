@@ -17,6 +17,9 @@ defensive code.
 - `ctest` (bundled with CMake) for running tests
 - [`just`][just-link] (optional) for the task shortcuts &mdash; `pacman -S just`
 
+The [Unity][unity-link] test framework is vendored under `tests/vendor/unity/`,
+so the build needs no network access.
+
 ## Build
 
 The build is driven entirely by `CMakePresets.json`. Use CMake directly:
@@ -64,7 +67,7 @@ justfile              Thin task-runner shortcuts around the presets
 cmake/                Reusable CMake modules (CompilerWarnings.cmake)
 include/              Public headers (main.h, tcp.h)
 src/                  Library + executable targets (tcp.c -> myhttp_lib, main.c -> myhttp)
-tests/                CTest-registered unit tests
+tests/                Unity unit tests (framework vendored in vendor/), CTest-registered
 .clangd               Points clangd at build/debug/compile_commands.json
 ```
 
@@ -72,3 +75,4 @@ Personal, machine-specific build tweaks go in `CMakeUserPresets.json`
 (gitignored), not in `CMakePresets.json`.
 
 [just-link]:<https://github.com/casey/just>
+[unity-link]:<https://github.com/ThrowTheSwitch/Unity>
