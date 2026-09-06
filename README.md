@@ -15,7 +15,7 @@ defensive code.
 - Ninja
 - A C23 compiler (GCC >= 14 or Clang >= 18)
 - `ctest` (bundled with CMake) for running tests
-- [`just`](https://github.com/casey/just) (optional) for the task shortcuts &mdash; `pacman -S just`
+- [`just`][just-link] (optional) for the task shortcuts &mdash; `pacman -S just`
 
 ## Build
 
@@ -70,3 +70,5 @@ tests/                CTest-registered unit tests
 
 Personal, machine-specific build tweaks go in `CMakeUserPresets.json`
 (gitignored), not in `CMakePresets.json`.
+
+[just-link]:<https://github.com/casey/just>
