@@ -1,6 +1,7 @@
 # ---- Library: everything except main(), so tests can link against it ----
 add_library(myhttp_lib STATIC
   tcp.c
+  http.c
 )
 add_library(myhttp::lib ALIAS myhttp_lib)
 

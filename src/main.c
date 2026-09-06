@@ -1,3 +1,4 @@
+#include <http.h>
 #include <main.h>
 #include <stdlib.h>
 #include <tcp.h>
@@ -16,6 +17,22 @@ int main(void) {
     close(server.socket_fd);
     exit(EXIT_FAILURE);
   }
+
+  http_request request = {0};
+
+  if (read_http_request(client_fd, &request) == HTTP_PARSE_INVALID) {
+    debug_log("Failed reading request");
+    close(client_fd);
+    close(server.socket_fd);
+    exit(EXIT_FAILURE);
+  }
+
+  if (*request.method)
+    printf("Method: %s\n", request.method);
+  if (*request.path)
+    printf("Path: %s\n", request.path);
+  if (*request.protocol)
+    printf("Protocol: %s\n", request.protocol);
 
   debug_log("Client connected");
 

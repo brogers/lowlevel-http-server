@@ -29,9 +29,9 @@ run: build
 ci:
     cmake --workflow --preset "{{preset}}"
 
-# Format all C sources with clang-format
+# Format all first-party C sources with clang-format (skips vendored code)
 format:
-    find src include tests -name '*.[ch]' -print0 | xargs -0 clang-format -i
+    find src include tests -name '*.[ch]' -not -path '*/vendor/*' -print0 | xargs -0 clang-format -i
 
 # Remove build artifacts for <preset> (keep the CMake cache)
 clean:
