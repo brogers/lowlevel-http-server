@@ -21,4 +21,4 @@ typedef struct {
 server_status_e bind_tcp_port(tcp_server *server, uint16_t port);
 int accept_client(int server_fd);
 
-#endif // TCP_H
+#endif // !TCP_H
