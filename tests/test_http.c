@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -133,6 +134,42 @@ static void test_free_http_response_headers(void) {
   TEST_ASSERT_EQUAL_INT(0, response.header_count);
 }
 
+static void test_set_http_body(void) {
+  http_response response;
+  init_http_response(&response);
+
+  char *body = "<html><body><h1>Hello, world!</h1></body></html>";
+
+  set_http_body(&response, body);
+
+  TEST_ASSERT_EQUAL_INT(48, response.body_length);
+  TEST_ASSERT_EQUAL_STRING(body, response.body);
+
+  free_http_response(&response);
+}
+
+static void test_construct_http_response(void) {
+  char *body = "<html><body><h1>Hello, world!</h1></body></html>";
+  char *headers =
+      "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n";
+  char expected[128];
+  snprintf(expected, 128, "%s\r\n%s", headers, body);
+
+  http_response response = {0};
+  init_http_response(&response);
+  size_t response_length = {0};
+
+  add_http_header(&response, "Content-Type", "text/html");
+  add_http_header(&response, "Connection", "close");
+
+  set_http_body(&response, body);
+
+  char *actual = construct_http_response(&response, &response_length);
+
+  TEST_ASSERT_EQUAL_STRING(expected, actual);
+  TEST_ASSERT_EQUAL_INT(111, response_length);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_extracts_get_method);
@@ -147,5 +184,7 @@ int main(void) {
   RUN_TEST(test_init_http_response);
   RUN_TEST(test_add_http_response_header);
   RUN_TEST(test_free_http_response_headers);
+  RUN_TEST(test_set_http_body);
+  RUN_TEST(test_construct_http_response);
   return UNITY_END();
 }

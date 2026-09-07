@@ -47,6 +47,12 @@ http_parse_e read_http_request(int socket_fd, http_request *request);
 
 void add_http_header(http_response *response, const char *key,
                      const char *value);
+void set_http_body(http_response *response, char *body);
+
+char *construct_http_response(const http_response *response,
+                              size_t *response_length);
+void send_http_response(int client_fd, const http_response *response);
+
 void free_http_response(http_response *response);
 
 #endif // !HTTP_H

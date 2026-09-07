@@ -1,8 +1,5 @@
 #include <http.h>
-#include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <tcp.h>
 
 #include <main.h>
@@ -37,16 +34,19 @@ int main(void) {
     close(client_fd);
     return 0;
   }
-  printf("Parsed HTTP Headers:\n");
-  for (size_t i = 0; i < request.header_count; i++) {
-    printf("%s: %s\n", request.headers[i].key, request.headers[i].value);
-  }
 
   free_http_headers(&request);
 
   http_response response = {0};
-
   init_http_response(&response);
+  add_http_header(&response, "Content-Type", "text/html");
+  set_http_body(&response, "<html><body><h1>Hello, world!</h1></body></html>");
+  char content_length[16];
+  snprintf(content_length, 16, "%lu", response.body_length);
+  add_http_header(&response, "Content-Length", content_length);
+  add_http_header(&response, "Connection", "close");
+
+  send_http_response(client_fd, &response);
 
   free_http_response(&response);
 
