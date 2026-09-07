@@ -44,6 +44,12 @@ int main(void) {
 
   free_http_headers(&request);
 
+  http_response response = {0};
+
+  init_http_response(&response);
+
+  free_http_response(&response);
+
   close(client_fd);
   close(server.socket_fd);
   return 0;

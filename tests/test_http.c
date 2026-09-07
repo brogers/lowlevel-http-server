@@ -3,6 +3,7 @@
 
 #include <http.h>
 #include <unity.h>
+#include <unity_internals.h>
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -85,9 +86,6 @@ static void test_parse_http_header_key_value(void) {
   free_http_headers(&request);
 }
 
-// free_http_headers() releases the header block and blanks the request so a
-// later caller can't double-free or walk freed memory. Run under the `asan`
-// preset (`just preset=asan test`) to also catch a missing or double free.
 static void test_free_http_headers(void) {
   const char *raw_request = "GET /index.html HTTP/1.1\r\n"
                             "Host: localhost:8080\r\n"
@@ -102,6 +100,39 @@ static void test_free_http_headers(void) {
   TEST_ASSERT_EQUAL_INT(0, request.header_count);
 }
 
+static void test_init_http_response(void) {
+  http_response response = {0};
+  init_http_response(&response);
+
+  TEST_ASSERT_EQUAL_INT(200, response.status_code);
+  TEST_ASSERT_EQUAL_STRING("OK", response.reason_phrase);
+  TEST_ASSERT_EQUAL_INT(0, response.header_count);
+  TEST_ASSERT_EQUAL_INT(0, response.body_length);
+}
+
+static void test_add_http_response_header(void) {
+  http_response response = {0};
+
+  add_http_header(&response, "Content-Type", "text/html");
+
+  TEST_ASSERT_EQUAL_INT(1, response.header_count);
+  TEST_ASSERT_EQUAL_STRING("Content-Type", response.headers[0].key);
+  TEST_ASSERT_EQUAL_STRING("text/html", response.headers[0].value);
+}
+
+static void test_free_http_response_headers(void) {
+  http_response response = {0};
+
+  add_http_header(&response, "Content-Type", "text/html");
+
+  TEST_ASSERT_EQUAL_INT(1, response.header_count);
+
+  free_http_response(&response);
+
+  TEST_ASSERT_NULL(response.headers);
+  TEST_ASSERT_EQUAL_INT(0, response.header_count);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_extracts_get_method);
@@ -113,5 +144,8 @@ int main(void) {
   RUN_TEST(test_parse_http_header_count);
   RUN_TEST(test_parse_http_header_key_value);
   RUN_TEST(test_free_http_headers);
+  RUN_TEST(test_init_http_response);
+  RUN_TEST(test_add_http_response_header);
+  RUN_TEST(test_free_http_response_headers);
   return UNITY_END();
 }
