@@ -16,6 +16,13 @@ typedef enum {
   HTTP_PARSE_INVALID,
 } http_parse_e;
 
+typedef enum {
+  HTTP_METHOD_GET,
+  HTTP_METHOD_POST,
+  HTTP_METHOD_PUT,
+  HTTP_METHOD_UNK,
+} http_method_e;
+
 typedef struct {
   char key[HTTP_MAX_HEADER_KEY_LEN];
   char value[HTTP_MAX_HEADER_VALUE_LEN];
@@ -23,6 +30,7 @@ typedef struct {
 
 typedef struct {
   char method[HTTP_METHOD_MAX_LEN];
+  http_method_e methode;
   char path[HTTP_PATH_MAX_LEN];
   char protocol[HTTP_PROTOCOL_MAX_LEN];
   http_header_t *headers;
@@ -39,24 +47,32 @@ typedef struct {
   size_t body_length;
 } http_response;
 
+char *construct_http_response(const http_response *response,
+                              size_t *response_length);
+
+void free_http_response(http_response *response);
+
+void add_http_header(http_response *response, const char *key,
+                     const char *value);
+
+void init_http_response(http_response *response);
+
+void free_http_headers(http_request *request);
+
+http_parse_e read_http_request(int socket_fd, http_request *request);
+
+http_parse_e parse_http_headers(const char *raw_request, http_request *request);
+
+http_method_e http_method_to_enum(char *method);
+
+bool handle_request(http_request *req, http_response *res);
+
 void sanitize_path(const char *requested_path, char *sanitized_path,
                    size_t buffer_size);
 void serve_file(const char *path, http_response *response);
 
-void init_http_response(http_response *response);
-void free_http_headers(http_request *request);
-
-http_parse_e parse_http_headers(const char *raw_request, http_request *request);
-http_parse_e read_http_request(int socket_fd, http_request *request);
-
-void add_http_header(http_response *response, const char *key,
-                     const char *value);
 void set_http_body(http_response *response, char *body);
 
-char *construct_http_response(const http_response *response,
-                              size_t *response_length);
 void send_http_response(int client_fd, const http_response *response);
-
-void free_http_response(http_response *response);
 
 #endif // !HTTP_H

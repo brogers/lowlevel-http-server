@@ -75,6 +75,16 @@ no keep-alive.
 **`debug_log(msg)`** (`include/main.h`) is a macro that prints `[file] msg` to
 stderr; use it for diagnostics rather than bare `printf`.
 
+**Vendored cJSON (`vendor/cjson/`).** cJSON v1.7.19 (MIT), just the upstream
+`cJSON.c` / `cJSON.h`, vendored so the build needs no network or system package.
+`vendor/CMakeLists.txt` builds it as a `cjson` static lib (alias `cjson::cjson`)
+with a `SYSTEM` include dir and no `myhttp::warnings`, mirroring the Unity setup;
+it is linked `PUBLIC` into `myhttp_lib` (`main.c` and tests use it directly, so
+its include dir and link propagate to every consumer of `myhttp::lib`).
+First-party code includes it flat as `#include <cJSON.h>` (not upstream's
+`<cjson/cJSON.h>`). Re-fetch steps and the version pin live in
+`vendor/cjson/README.md`.
+
 **Warnings.** `cmake/CompilerWarnings.cmake` defines the INTERFACE target
 `myhttp::warnings` (`-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wundef
 -Wdouble-promotion -Wstrict-prototypes`), linked PRIVATE into every first-party

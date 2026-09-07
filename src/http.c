@@ -1,5 +1,6 @@
 #include <http.h>
 
+#include <route.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,14 +8,29 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-void sanitize_path(const char *requested_path, char *sanitized_path,
-                   size_t buffer_size) {
-  const char *web_root = "./www";
-  snprintf(sanitized_path, buffer_size, "%s%s", web_root, requested_path);
+extern Route routes[];
+extern size_t route_count;
 
-  if (strstr(sanitized_path, "..")) {
-    strncpy(sanitized_path, "./www/404.html", buffer_size - 1);
+bool handle_request(http_request *req, http_response *res) {
+  for (size_t i = 0; i < route_count; i++) {
+    if (strcmp(routes[i].path, req->path) == 0 &&
+        routes[i].method == req->methode) {
+      routes[i].handler(req, res);
+      return true;
+    }
   }
+  return false;
+}
+
+http_method_e http_method_to_enum(char *method) {
+  if (!strcmp(method, "GET"))
+    return HTTP_METHOD_GET;
+  else if (!strcmp(method, "POST"))
+    return HTTP_METHOD_POST;
+  else if (!strcmp(method, "PUT"))
+    return HTTP_METHOD_PUT;
+  else
+    return HTTP_METHOD_UNK;
 }
 
 void serve_file(const char *path, http_response *response) {
@@ -65,6 +81,16 @@ void serve_file(const char *path, http_response *response) {
   char content_length[32];
   snprintf(content_length, sizeof(content_length), "%zu", file_size);
   add_http_header(response, "Content-Length", content_length);
+}
+
+void sanitize_path(const char *requested_path, char *sanitized_path,
+                   size_t buffer_size) {
+  const char *web_root = "./www";
+  snprintf(sanitized_path, buffer_size, "%s%s", web_root, requested_path);
+
+  if (strstr(sanitized_path, "..")) {
+    strncpy(sanitized_path, "./www/404.html", buffer_size - 1);
+  }
 }
 
 http_parse_e parse_http_headers(const char *raw_request,
@@ -133,15 +159,8 @@ http_parse_e read_http_request(int socket_fd, http_request *request) {
              request->protocol) != 3)
     return HTTP_PARSE_INVALID;
 
-  char *http_methods[5] = {"GET", "POST", "PUT", "PATCH", "DELETE"};
-
-  bool valid = false;
-
-  for (int i = 0; i < 5; i++)
-    if (!strcmp(http_methods[i], request->method))
-      valid = true;
-
-  if (!valid)
+  request->methode = http_method_to_enum(request->method);
+  if (request->methode == HTTP_METHOD_UNK)
     return HTTP_PARSE_INVALID;
 
   if (strcmp("HTTP/1.1", request->protocol))

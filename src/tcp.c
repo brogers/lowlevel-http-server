@@ -1,4 +1,5 @@
 #include <main.h>
+#include <stdio.h>
 #include <string.h>
 #include <tcp.h>
 
@@ -27,7 +28,9 @@ server_status_e bind_tcp_port(tcp_server *server, uint16_t port) {
     return SERVER_LISTEN_ERROR;
   }
 
-  debug_log("Server bound and listening");
+  char buffer[128];
+  snprintf(buffer, sizeof(buffer), "Server bound and listening on port %d", port);
+  debug_log(buffer);
   return SERVER_OK;
 }
 
