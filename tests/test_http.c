@@ -1,6 +1,10 @@
+#define _POSIX_C_SOURCE 200809L // mkdtemp, fdopen, chdir on strict -std=c2x
+
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <http.h>
@@ -181,6 +185,200 @@ static void test_construct_http_response(void) {
   free(actual);
 }
 
+static void test_sanitize_path_valid(void) {
+  char *path = "/index.html";
+  char *expected = "./www/index.html";
+  char actual[128];
+  sanitize_path(path, actual, sizeof(actual));
+
+  TEST_ASSERT_EQUAL_STRING(expected, actual);
+}
+
+static void test_sanitize_path_invalid_dots(void) {
+  char *path = "../index.html";
+  char *expected = "./www/404.html";
+  char actual[128];
+  sanitize_path(path, actual, sizeof(actual));
+
+  TEST_ASSERT_EQUAL_STRING(expected, actual);
+}
+
+// serve_file() opens files with fopen(..., "rb+")
+// fixtures are staged in a throwaway directory.
+
+static char g_tmpl[] = "/tmp/myhttp_test_XXXXXX";
+static char *g_tmpdir;
+
+static void ensure_tmpdir(void) {
+  if (!g_tmpdir) {
+    g_tmpdir = mkdtemp(g_tmpl);
+    TEST_ASSERT_NOT_NULL(g_tmpdir);
+  }
+}
+
+static void write_fixture(const char *name, const char *content, char *out,
+                          size_t out_size) {
+  ensure_tmpdir();
+  snprintf(out, out_size, "%s/%s", g_tmpdir, name);
+  FILE *f = fopen(out, "wb");
+  TEST_ASSERT_NOT_NULL(f);
+  size_t len = strlen(content);
+  TEST_ASSERT_EQUAL_INT((int)len, (int)fwrite(content, 1, len, f));
+  fclose(f);
+}
+
+static const char *header_value(const http_response *r, const char *key) {
+  for (size_t i = 0; i < r->header_count; i++)
+    if (!strcmp(r->headers[i].key, key))
+      return r->headers[i].value;
+  return NULL;
+}
+
+static void serve_fixture(const char *name, const char *content,
+                          http_response *response) {
+  char path[512];
+  write_fixture(name, content, path, sizeof(path));
+  init_http_response(response);
+  serve_file(path, response);
+}
+
+static void test_serve_file_keeps_200_status(void) {
+  http_response response = {0};
+  serve_fixture("ok.html", "<html><body>hi</body></html>", &response);
+
+  TEST_ASSERT_EQUAL_INT(200, response.status_code);
+  TEST_ASSERT_EQUAL_STRING("OK", response.reason_phrase);
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_reads_body(void) {
+  const char *content = "print('hello')\n";
+  http_response response = {0};
+  serve_fixture("app.js", content, &response);
+
+  TEST_ASSERT_EQUAL_INT((int)strlen(content), (int)response.body_length);
+  TEST_ASSERT_NOT_NULL(response.body);
+  TEST_ASSERT_EQUAL_MEMORY(content, response.body, strlen(content));
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_sets_content_length_header(void) {
+  http_response response = {0};
+  serve_fixture("data.bin", "abcdefghij", &response);
+
+  TEST_ASSERT_EQUAL_STRING("10", header_value(&response, "Content-Length"));
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_content_type_html(void) {
+  http_response response = {0};
+  serve_fixture("page.html", "<h1>x</h1>", &response);
+
+  TEST_ASSERT_EQUAL_STRING("text/html",
+                           header_value(&response, "Content-Type"));
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_content_type_css(void) {
+  http_response response = {0};
+  serve_fixture("style.css", "body{}", &response);
+
+  TEST_ASSERT_EQUAL_STRING("text/css", header_value(&response, "Content-Type"));
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_content_type_js(void) {
+  http_response response = {0};
+  serve_fixture("app.js", "var x=1;", &response);
+
+  TEST_ASSERT_EQUAL_STRING("application/javascript",
+                           header_value(&response, "Content-Type"));
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_content_type_png(void) {
+  http_response response = {0};
+  serve_fixture("pixel.png", "\x89PNG", &response);
+
+  TEST_ASSERT_EQUAL_STRING("image/png",
+                           header_value(&response, "Content-Type"));
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_content_type_unknown_is_octet_stream(void) {
+  http_response response = {0};
+  serve_fixture("notes.txt", "plain text", &response);
+
+  TEST_ASSERT_EQUAL_STRING("application/octet-stream",
+                           header_value(&response, "Content-Type"));
+
+  free_http_response(&response);
+}
+
+static void test_serve_file_missing_returns_404(void) {
+  char cwd[4096];
+  TEST_ASSERT_NOT_NULL(getcwd(cwd, sizeof(cwd)));
+
+  ensure_tmpdir();
+  char wwwdir[512];
+  snprintf(wwwdir, sizeof(wwwdir), "%s/www", g_tmpdir);
+  TEST_ASSERT_EQUAL_INT(0, mkdir(wwwdir, 0755));
+  char path[512];
+  write_fixture("www/404.html", "<h1>Not Found</h1>", path, sizeof(path));
+
+  // serve_file() falls back to the relative "./www/404.html"; run from beside
+  // it.
+  TEST_ASSERT_EQUAL_INT(0, chdir(g_tmpdir));
+
+  http_response response = {0};
+  init_http_response(&response);
+  serve_file("this-file-does-not-exist.html", &response);
+
+  TEST_ASSERT_EQUAL_INT(0, chdir(cwd));
+
+  TEST_ASSERT_EQUAL_INT(404, response.status_code);
+  TEST_ASSERT_EQUAL_STRING("Not Found", response.reason_phrase);
+  // the recursive fallback serves the 404.html body, so its headers land too
+  TEST_ASSERT_EQUAL_STRING("text/html",
+                           header_value(&response, "Content-Type"));
+  TEST_ASSERT_EQUAL_INT(18, (int)response.body_length);
+
+  free_http_response(&response);
+}
+
+// When 404.html is missing too, serve_file() must still terminate (return a
+// bodyless 404) rather than recurse forever.
+static void test_serve_file_missing_without_404_page(void) {
+  char cwd[4096];
+  TEST_ASSERT_NOT_NULL(getcwd(cwd, sizeof(cwd)));
+
+  ensure_tmpdir();
+  char bare[512];
+  snprintf(bare, sizeof(bare), "%s/bare", g_tmpdir);
+  TEST_ASSERT_EQUAL_INT(0, mkdir(bare, 0755));
+  TEST_ASSERT_EQUAL_INT(0, chdir(bare));
+
+  http_response response = {0};
+  init_http_response(&response);
+  serve_file("nope.html", &response);
+
+  TEST_ASSERT_EQUAL_INT(0, chdir(cwd));
+
+  TEST_ASSERT_EQUAL_INT(404, response.status_code);
+  TEST_ASSERT_EQUAL_STRING("Not Found", response.reason_phrase);
+  TEST_ASSERT_NULL(response.body);
+  TEST_ASSERT_EQUAL_INT(0, (int)response.header_count);
+
+  free_http_response(&response);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_extracts_get_method);
@@ -197,5 +395,17 @@ int main(void) {
   RUN_TEST(test_free_http_response_headers);
   RUN_TEST(test_set_http_body);
   RUN_TEST(test_construct_http_response);
+  RUN_TEST(test_sanitize_path_valid);
+  RUN_TEST(test_sanitize_path_invalid_dots);
+  RUN_TEST(test_serve_file_keeps_200_status);
+  RUN_TEST(test_serve_file_reads_body);
+  RUN_TEST(test_serve_file_sets_content_length_header);
+  RUN_TEST(test_serve_file_content_type_html);
+  RUN_TEST(test_serve_file_content_type_css);
+  RUN_TEST(test_serve_file_content_type_js);
+  RUN_TEST(test_serve_file_content_type_png);
+  RUN_TEST(test_serve_file_content_type_unknown_is_octet_stream);
+  RUN_TEST(test_serve_file_missing_returns_404);
+  RUN_TEST(test_serve_file_missing_without_404_page);
   return UNITY_END();
 }

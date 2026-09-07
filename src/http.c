@@ -1,10 +1,71 @@
 #include <http.h>
+
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+void sanitize_path(const char *requested_path, char *sanitized_path,
+                   size_t buffer_size) {
+  const char *web_root = "./www";
+  snprintf(sanitized_path, buffer_size, "%s%s", web_root, requested_path);
+
+  if (strstr(sanitized_path, "..")) {
+    strncpy(sanitized_path, "./www/404.html", buffer_size - 1);
+  }
+}
+
+void serve_file(const char *path, http_response *response) {
+  const char *not_found_page = "./www/404.html";
+
+  FILE *file = fopen(path, "rb+");
+  if (!file) {
+    response->status_code = 404;
+    strncpy(response->reason_phrase, "Not Found",
+            sizeof(response->reason_phrase) - 1);
+    // Serve the 404 body, but only if we are not already trying to:
+    // a missing 404.html would otherwise recurse forever.
+    if (strcmp(path, not_found_page))
+      serve_file(not_found_page, response);
+    return;
+  }
+
+  fseek(file, 0, SEEK_END);
+  size_t file_size = (size_t)ftell(file);
+  fseek(file, 0, SEEK_SET);
+
+  char *file_content = malloc(file_size + 1);
+  if (!file_content) {
+    perror("Failed to allocate memory for file content");
+    fclose(file);
+    exit(EXIT_FAILURE);
+  }
+
+  fread(file_content, 1, file_size, file);
+  fclose(file);
+  file_content[file_size] = '\0';
+
+  response->body = file_content;
+  response->body_length = file_size;
+
+  if (strstr(path, ".html")) {
+    add_http_header(response, "Content-Type", "text/html");
+  } else if (strstr(path, ".css")) {
+    add_http_header(response, "Content-Type", "text/css");
+  } else if (strstr(path, ".js")) {
+    add_http_header(response, "Content-Type", "application/javascript");
+  } else if (strstr(path, ".png")) {
+    add_http_header(response, "Content-Type", "image/png");
+  } else {
+    add_http_header(response, "Content-Type", "application/octet-stream");
+  }
+
+  char content_length[32];
+  snprintf(content_length, sizeof(content_length), "%zu", file_size);
+  add_http_header(response, "Content-Length", content_length);
+}
 
 http_parse_e parse_http_headers(const char *raw_request,
                                 http_request *request) {
