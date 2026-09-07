@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -72,7 +73,9 @@ static void test_parse_http_header_count(void) {
                             "\r\n";
   http_request request = {0};
   parse_http_headers(raw_request, &request);
+
   TEST_ASSERT_EQUAL_INT(3, request.header_count);
+
   free_http_headers(&request);
 }
 
@@ -82,8 +85,10 @@ static void test_parse_http_header_key_value(void) {
                             "\r\n";
   http_request request = {0};
   parse_http_headers(raw_request, &request);
+
   TEST_ASSERT_EQUAL_STRING("Host", request.headers[0].key);
   TEST_ASSERT_EQUAL_STRING("localhost:8080", request.headers[0].value);
+
   free_http_headers(&request);
 }
 
@@ -93,6 +98,7 @@ static void test_free_http_headers(void) {
                             "\r\n";
   http_request request = {0};
   parse_http_headers(raw_request, &request);
+
   TEST_ASSERT_EQUAL_INT(1, request.header_count);
 
   free_http_headers(&request);
@@ -109,6 +115,8 @@ static void test_init_http_response(void) {
   TEST_ASSERT_EQUAL_STRING("OK", response.reason_phrase);
   TEST_ASSERT_EQUAL_INT(0, response.header_count);
   TEST_ASSERT_EQUAL_INT(0, response.body_length);
+  TEST_ASSERT_NULL(response.headers);
+  TEST_ASSERT_NULL(response.body);
 }
 
 static void test_add_http_response_header(void) {
@@ -119,6 +127,8 @@ static void test_add_http_response_header(void) {
   TEST_ASSERT_EQUAL_INT(1, response.header_count);
   TEST_ASSERT_EQUAL_STRING("Content-Type", response.headers[0].key);
   TEST_ASSERT_EQUAL_STRING("text/html", response.headers[0].value);
+
+  free_http_response(&response);
 }
 
 static void test_free_http_response_headers(void) {
@@ -158,16 +168,17 @@ static void test_construct_http_response(void) {
   http_response response = {0};
   init_http_response(&response);
   size_t response_length = {0};
-
   add_http_header(&response, "Content-Type", "text/html");
   add_http_header(&response, "Connection", "close");
-
   set_http_body(&response, body);
 
   char *actual = construct_http_response(&response, &response_length);
 
   TEST_ASSERT_EQUAL_STRING(expected, actual);
   TEST_ASSERT_EQUAL_INT(111, response_length);
+
+  free_http_response(&response);
+  free(actual);
 }
 
 int main(void) {

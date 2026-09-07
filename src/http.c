@@ -115,8 +115,8 @@ void add_http_header(http_response *response, const char *key,
 
 void set_http_body(http_response *response, char *body) {
   response->body_length = strlen(body);
-  response->body = malloc(response->body_length);
-  strncpy(response->body, body, response->body_length);
+  response->body = malloc(response->body_length + 1);
+  memcpy(response->body, body, response->body_length + 1);
 }
 
 char *construct_http_response(const http_response *response,
@@ -166,6 +166,7 @@ char *construct_http_response(const http_response *response,
     offset += response->body_length;
   }
 
+  buffer[offset] = '\0';
   *response_length = offset;
   return buffer;
 }
@@ -188,6 +189,7 @@ void send_http_response(int client_fd, const http_response *response) {
 
 void free_http_response(http_response *response) {
   free(response->headers);
+  free(response->body);
   response->headers = NULL;
   response->header_count = 0;
 }
