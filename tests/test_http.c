@@ -62,6 +62,46 @@ static void test_returns_error_on_invalid_protocol(void) {
   parse_request_fail("POST /submit HTTP/1.2\r\n\r\n", &request);
 }
 
+static void test_parse_http_header_count(void) {
+  const char *raw_request = "GET /index.html HTTP/1.1\r\n"
+                            "Host: localhost:8080\r\n"
+                            "User-Agent: curl/7.68.0\r\n"
+                            "Accept: */*\r\n"
+                            "\r\n";
+  http_request request = {0};
+  parse_http_headers(raw_request, &request);
+  TEST_ASSERT_EQUAL_INT(3, request.header_count);
+  free_http_headers(&request);
+}
+
+static void test_parse_http_header_key_value(void) {
+  const char *raw_request = "GET /index.html HTTP/1.1\r\n"
+                            "Host: localhost:8080\r\n"
+                            "\r\n";
+  http_request request = {0};
+  parse_http_headers(raw_request, &request);
+  TEST_ASSERT_EQUAL_STRING("Host", request.headers[0].key);
+  TEST_ASSERT_EQUAL_STRING("localhost:8080", request.headers[0].value);
+  free_http_headers(&request);
+}
+
+// free_http_headers() releases the header block and blanks the request so a
+// later caller can't double-free or walk freed memory. Run under the `asan`
+// preset (`just preset=asan test`) to also catch a missing or double free.
+static void test_free_http_headers(void) {
+  const char *raw_request = "GET /index.html HTTP/1.1\r\n"
+                            "Host: localhost:8080\r\n"
+                            "\r\n";
+  http_request request = {0};
+  parse_http_headers(raw_request, &request);
+  TEST_ASSERT_EQUAL_INT(1, request.header_count);
+
+  free_http_headers(&request);
+
+  TEST_ASSERT_NULL(request.headers);
+  TEST_ASSERT_EQUAL_INT(0, request.header_count);
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(test_extracts_get_method);
@@ -70,5 +110,8 @@ int main(void) {
   RUN_TEST(test_extracts_protocol);
   RUN_TEST(test_returns_error_on_invalid_protocol);
   RUN_TEST(test_returns_error_on_invalid_method);
+  RUN_TEST(test_parse_http_header_count);
+  RUN_TEST(test_parse_http_header_key_value);
+  RUN_TEST(test_free_http_headers);
   return UNITY_END();
 }
