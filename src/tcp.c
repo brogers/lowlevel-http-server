@@ -1,9 +1,10 @@
 #include <main.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <tcp.h>
 
-server_status_e bind_tcp_port(tcp_server *server, uint16_t port) {
+server_status_e bind_tcp_port(tcp_server *server, int port) {
   memset(server, 0, sizeof(*server));
   server->socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (server->socket_fd == -1) {
@@ -13,7 +14,7 @@ server_status_e bind_tcp_port(tcp_server *server, uint16_t port) {
 
   server->address.sin_family = AF_INET;
   server->address.sin_addr.s_addr = INADDR_ANY;
-  server->address.sin_port = htons(port);
+  server->address.sin_port = htons((uint16_t)port);
 
   if (bind(server->socket_fd, (struct sockaddr *)&server->address,
            sizeof(server->address)) < 0) {
@@ -29,7 +30,8 @@ server_status_e bind_tcp_port(tcp_server *server, uint16_t port) {
   }
 
   char buffer[128];
-  snprintf(buffer, sizeof(buffer), "Server bound and listening on port %d", port);
+  snprintf(buffer, sizeof(buffer), "Server bound and listening on port %d",
+           port);
   debug_log(buffer);
   return SERVER_OK;
 }
