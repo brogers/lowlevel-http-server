@@ -10,8 +10,7 @@
 #define HTTP_PROTOCOL_MAX_LEN 16
 #define HTTP_MAX_HEADER_KEY_LEN 256
 #define HTTP_MAX_HEADER_VALUE_LEN 256
-#define HTTP_MAX_HEADER_REASON_LEN 64
-
+#define HTTP_MAX_REASON_LEN 64
 typedef enum {
   HTTP_PARSE_OK,
   HTTP_PARSE_INVALID,
@@ -41,7 +40,7 @@ typedef struct {
 
 typedef struct {
   int status_code;
-  char reason_phrase[HTTP_MAX_HEADER_REASON_LEN];
+  char reason_phrase[HTTP_MAX_REASON_LEN];
   http_header_t *headers;
   size_t header_count;
   char *body;
