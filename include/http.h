@@ -1,6 +1,7 @@
 #ifndef HTTP_H
 #define HTTP_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 #define HTTP_MAX_REQUEST_LEN 8192 * 4
