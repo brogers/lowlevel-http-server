@@ -1,8 +1,8 @@
-#include <main.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <tcp.h>
+#include <util.h>
 
 server_status_e bind_tcp_port(tcp_server *server, int port) {
   memset(server, 0, sizeof(*server));

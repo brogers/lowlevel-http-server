@@ -9,8 +9,8 @@
 #include <string.h>
 #include <tcp.h>
 
-#include <main.h>
 #include <unistd.h>
+#include <util.h>
 
 typedef struct {
   int port;
